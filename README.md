@@ -12,7 +12,8 @@ resources to work locally: <br/>
 1. platform-addons: needed software to run locally. This currently contains amq-streams-1.5 (which is the upstream of Kafka 2.5)<br/>
 2. platform-scripts: support running kafka, creating/listing and deleting topics needed for this solution
 and also building and packaging the solution as well. All the scripts are named to describe their capabilities <br/>
-3. platform-testdata: sample transactions to leverage for using the platform. 
+3. platform-testdata: sample transactions to leverage for using the platform. <br/>
+4. ddl: The DDL for the database that is used.
 
 ## Scenario: CSV File Processing
 This repository follows a very common general implementation of processing a CSV file from a filesystem. The intent is to pick up
