@@ -29,10 +29,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Component
 public class CamelConfiguration extends RouteBuilder {
   private static final Logger log = LoggerFactory.getLogger(CamelConfiguration.class);
+
+  @Autowired
+  private ConfigProperties config;
 
   @Bean
   private KafkaEndpoint kafkaEndpoint(){
@@ -44,6 +48,13 @@ public class CamelConfiguration extends RouteBuilder {
     KafkaComponent kafka = new KafkaComponent();
     return kafka;
   }
+
+  private String getKafkaTopicUri(String topic) {
+    return "kafka:" + topic +
+            "?brokers=" +
+            config.getKafkaBrokers();
+  }
+
   /*
    *  Kafka implementation based on https://camel.apache.org/components/latest/kafka-component.html
    *  JDBC implementation based on https://camel.apache.org/components/latest/dataformats/hl7-dataformat.html
@@ -73,59 +84,55 @@ public class CamelConfiguration extends RouteBuilder {
      *
      */
     from("direct:auditing")
-        .setHeader("messageprocesseddate").simple("${date:now:yyyy-MM-dd}")
-        .setHeader("messageprocessedtime").simple("${date:now:HH:mm:ss:SSS}")
-        .setHeader("processingtype").exchangeProperty("processingtype")
-        .setHeader("industrystd").exchangeProperty("industrystd")
-        .setHeader("component").exchangeProperty("componentname")
-        .setHeader("messagetrigger").exchangeProperty("messagetrigger")
-        .setHeader("processname").exchangeProperty("processname")
-        .setHeader("auditdetails").exchangeProperty("auditdetails")
-        .setHeader("camelID").exchangeProperty("camelID")
-        .setHeader("exchangeID").exchangeProperty("exchangeID")
-        .setHeader("internalMsgID").exchangeProperty("internalMsgID")
-        .setHeader("bodyData").exchangeProperty("bodyData")
-        .convertBodyTo(String.class).to("kafka://localhost:9092?topic=opsmgmt_platformtransactions&brokers=localhost:9092")
+            .setHeader("messageprocesseddate").simple("${date:now:yyyy-MM-dd}")
+            .setHeader("messageprocessedtime").simple("${date:now:HH:mm:ss:SSS}")
+            .setHeader("processingtype").exchangeProperty("processingtype")
+            .setHeader("industrystd").exchangeProperty("industrystd")
+            .setHeader("component").exchangeProperty("componentname")
+            .setHeader("messagetrigger").exchangeProperty("messagetrigger")
+            .setHeader("processname").exchangeProperty("processname")
+            .setHeader("auditdetails").exchangeProperty("auditdetails")
+            .setHeader("camelID").exchangeProperty("camelID")
+            .setHeader("exchangeID").exchangeProperty("exchangeID")
+            .setHeader("internalMsgID").exchangeProperty("internalMsgID")
+            .setHeader("bodyData").exchangeProperty("bodyData")
+            .convertBodyTo(String.class).to(getKafkaTopicUri("opsmgmt_platformtransactions"))
     ;
     /*
      *  Logging
      */
     from("direct:logging")
-        .log(LoggingLevel.INFO, log, "Transaction Message: [${body}]")
+            .log(LoggingLevel.INFO, log, "Transaction Message: [${body}]")
     ;
     /*
-    *  Kafka Implementation for implementing Third Party FHIR Server direct connection
-    */
+     *  Kafka Implementation for implementing Third Party FHIR Server direct connection
+     */
 
     // Samples Using FHIR
     // Adverse Events
-    from("kafka:localhost:9092?topic=fhirsvr_adverseevent&brokers=localhost:9092")
-        .routeId("AdverseEvent-MiddleTier")
-        // Auditing
-        .setProperty("processingtype").constant("data")
-        .setProperty("appname").constant("iDAAS-ConnectClinical-IndustryStd")
-        .setProperty("industrystd").constant("FHIR")
-        .setProperty("messagetrigger").constant("AdverseEvent")
-        .setProperty("component").simple("${routeId}")
-        .setProperty("camelID").simple("${camelId}")
-        .setProperty("exchangeID").simple("${exchangeId}")
-        .setProperty("internalMsgID").simple("${id}")
-        .setProperty("bodyData").simple("${body}")
-        .setProperty("processname").constant("MTier")
-        .setProperty("auditdetails").constant("Adverse Event to Enterprise By Data Type middle tier")
-        //.wireTap("direct:auditing")
-        // Enterprise Message By Type
-        .convertBodyTo(String.class).to("kafka:localhost:9092?topic=ent_fhirsvr_adverseevent&brokers=localhost:9092")
+    from(getKafkaTopicUri("fhirsvr_adverseevent"))
+            .routeId("AdverseEvent-MiddleTier")
+            // Auditing
+            .setProperty("processingtype").constant("data")
+            .setProperty("appname").constant("iDAAS-ConnectClinical-IndustryStd")
+            .setProperty("industrystd").constant("FHIR")
+            .setProperty("messagetrigger").constant("AdverseEvent")
+            .setProperty("component").simple("${routeId}")
+            .setProperty("camelID").simple("${camelId}")
+            .setProperty("exchangeID").simple("${exchangeId}")
+            .setProperty("internalMsgID").simple("${id}")
+            .setProperty("bodyData").simple("${body}")
+            .setProperty("processname").constant("MTier")
+            .setProperty("auditdetails").constant("Adverse Event to Enterprise By Data Type middle tier")
+            //.wireTap("direct:auditing")
+            // Enterprise Message By Type
+            .convertBodyTo(String.class).to(getKafkaTopicUri("ent_fhirsvr_adverseevent"))
     ;
 
-   /*  JBDC Implementations
-	*  There is NO restriction or limitation on data just requires a valid vendor based JDBC compliant connection.
-	*  If you need to download ANY specifications an HL7 account will be required.
-	*/
-
-
-
-
+    /*  JBDC Implementations
+     *  There is NO restriction or limitation on data just requires a valid vendor based JDBC compliant connection.
+     *  If you need to download ANY specifications an HL7 account will be required.
+     */
 
   }
 }

@@ -16,14 +16,20 @@
  */
 package com.redhat.idaas.connect.thirdparty;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@SpringBootApplication
-@EnableConfigurationProperties(ConfigProperties.class)
-public class Application {
-    public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
+@SuppressWarnings("ConfigurationProperties")
+@ConfigurationProperties(prefix = "idaas")
+public class ConfigProperties {
+
+    private String kafkaBrokers;
+
+    public String getKafkaBrokers() {
+        return kafkaBrokers;
     }
+
+    public void setKafkaBrokers(String kafkaBrokers) {
+        this.kafkaBrokers = kafkaBrokers;
+    }
+
 }
